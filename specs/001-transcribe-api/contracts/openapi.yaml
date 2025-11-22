@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: MLX Whisper Transcribe API
+  description: |
+    High-performance HTTP server for audio transcription using MLX-Whisper.
+    Compatible with OpenAI Whisper API specification.
+
+    This API accepts audio files and returns transcriptions in text format.
+    Supports multiple audio formats: MP3, WAV, M4A, MP4, MPEG, WEBM.
+
+  version: "1.0.0"
+  contact:
+    name: MLX Whisper Server
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:8000/v1
+    description: Local development server
+
+paths:
+  /audio/transcriptions:
+    post:
+      summary: Transcribe audio to text
+      description: |
+        Transcribe audio from a file to text.
+        Compatible with OpenAI Whisper API transcribe endpoint.
+
+        The audio file is processed and the transcription is returned in the response.
+        Maximum file size: 25MB. Maximum duration: 25 minutes.
+
+      operationId: transcribeAudio
+      tags:
+        - Audio
+
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: |
+                    Audio file to transcribe.
+                    Supported formats: mp3, wav, m4a, mp4, mpeg, webm
+                    Maximum size: 25MB
+                    Maximum duration: 25 minutes
+
+                model:
+                  type: string
+                  description: |
+                    Name of the MLX Whisper model to use.
+                    Default: mlx-community/whisper-small
+                  example: "mlx-community/whisper-small"
+
+                language:
+                  type: string
+                  description: |
+                    Language of the input audio.
+                    If not specified, language will be auto-detected.
+                  example: "en"
+
+                response_format:
+                  type: string
+                  enum: [json, text, srt, verbose_json]
+                  description: |
+                    Format of the transcription.
+                    Default: json
+                  example: "json"
+
+                temperature:
+                  type: number
+                  minimum: 0.0
+                  maximum: 2.0
+                  default: 0.0
+                  description: |
+                    Sampling temperature. Higher values mean more creativity.
+                    Default: 0.0
+                  example: 0.0
+
+      responses:
+        '200':
+          description: Successful transcription
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - text
+                properties:
+                  text:
+                    type: string
+                    description: Transcribed text from the audio
+                    example: "Hello, this is a test transcription."
+                  language:
+                    type: string
+                    description: |
+                      Language of the transcribed text.
+                      Present if auto-detected or specified.
+                    example: "en"
+                  duration:
+                    type: number
+                    description: Duration of the audio in seconds
+                    example: 120.5
+                  task:
+                    type: string
+                    description: Task type (always "transcribe" for this endpoint)
+                    example: "transcribe"
+              example:
+                text: "Hello, this is a test transcription."
+                language: "en"
+                duration: 120.5
+                task: "transcribe"
+
+            text/plain:
+              schema:
+                type: string
+              example: "Hello, this is a test transcription."
+
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /health:
+    get:
+      summary: Health check
+      description: |
+        Check the health status of the server.
+        Returns server status, model loaded status, and current load.
+
+      operationId: healthCheck
+      tags:
+        - System
+
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - workers
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                    example: "healthy"
+                  workers:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 2
+                      active:
+                        type: integer
+                        example: 1
+                      available:
+                        type: integer
+                        example: 1
+                  model_loaded:
+                    type: boolean
+                    example: true
+                  uptime_seconds:
+                    type: integer
+                    example: 3600
+              example:
+                status: "healthy"
+                workers:
+                  total: 2
+                  active: 1
+                  available: 1
+                model_loaded: true
+                uptime_seconds: 3600
+
+components:
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Unsupported file format. Allowed formats: mp3, wav, m4a, mp4, mpeg, webm"
+              type: "invalid_request_error"
+              code: "400"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    PayloadTooLarge:
+      description: File size or duration exceeds limits
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Audio file too large: 30MB (max: 25MB)"
+              type: "file_too_large"
+              code: "413"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    UnprocessableEntity:
+      description: Corrupted or unreadable audio file
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Invalid audio file: unable to read audio data"
+              type: "invalid_audio_file"
+              code: "422"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    RateLimitExceeded:
+      description: Too many concurrent requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Rate limit exceeded. Maximum 10 concurrent requests."
+              type: "rate_limit_exceeded"
+              code: "429"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    ServiceUnavailable:
+      description: Server busy or overloaded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Server busy. Please try again later."
+              type: "server_busy"
+              code: "503"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              message: "Internal server error occurred during transcription"
+              type: "server_error"
+              code: "500"
+            request_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - message
+            - type
+            - code
+          properties:
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Audio file too large: 30MB (max: 25MB)"
+            type:
+              type: string
+              description: Error type identifier
+              enum:
+                - invalid_request_error
+                - invalid_file_format
+                - file_too_large
+                - file_too_long
+                - invalid_audio_file
+                - rate_limit_exceeded
+                - server_busy
+                - server_error
+              example: "file_too_large"
+            code:
+              type: string
+              description: HTTP status code as string
+              example: "413"
+        request_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the request (for debugging)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API Key for authentication (optional - server accepts anonymous requests).
+        If provided, must be in Authorization header: "Bearer YOUR_API_KEY"
+
+    OpenAICompat:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Compatible with OpenAI API authentication.
+        Format: "Bearer YOUR_API_KEY"
+
+tags:
+  - name: Audio
+    description: Audio transcription endpoints
+  - name: System
+    description: System monitoring and health endpoints

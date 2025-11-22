@@ -1,0 +1,9 @@
+#!/bin/bash
+# Quick test - one line transcription
+
+AUDIO_FILE="/path/to/your.mp3"
+
+curl -X POST "http://127.0.0.1:9001/v1/audio/transcriptions" \
+  -F "file=@$AUDIO_FILE" \
+  -F "model=mlx-community/whisper-small"
+

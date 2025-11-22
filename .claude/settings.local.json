@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "SlashCommand(/speckit.specify 做一个高性能 HTTP 服务器，核心接口是 transcribe，与 OpenAI 的 Whisper OpenAPI 接口的入参、返回兼容，不需要管其它的接口，只实现 transcribe 接口)",
+      "Bash(git fetch:*)",
+      "Bash(bash:*)",
+      "Bash(read:*)",
+      "Bash(echo:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(test:*)",
+      "Bash(chmod:*)",
+      "Bash(python -c \"from src.core.config import config; print('Config import successful')\":*)",
+      "Bash(python -c:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
