@@ -11,6 +11,7 @@ transcription:
   allowed_formats: ["mp3", "wav", "m4a", "mp4", "mpeg", "webm"]
   model: "mlx-community/whisper-large-v3-mlx"
   use_modelscope: true # set to false if you can stably connect to huggingface
+  dump_audio_dir: "tmp_audio"
 
 logging:
   level: "INFO"

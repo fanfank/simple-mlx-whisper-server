@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class TranscribeRequest(BaseModel):
     """Request model for audio transcription."""
-    model: str = Field(default="mlx-community/whisper-small", description="MLX model to use")
+    model: str = Field(default="mlx-community/whisper-large-v3-mlx", description="MLX model to use")
     language: Optional[str] = Field(default=None, description="Language code (auto-detect if None)")
     response_format: str = Field(
         default="json",

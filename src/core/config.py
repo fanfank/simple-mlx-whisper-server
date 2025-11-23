@@ -18,8 +18,9 @@ class TranscriptionConfig(BaseModel):
         default=["mp3", "wav", "m4a", "mp4", "mpeg", "webm"],
         description="Allowed audio formats"
     )
-    model: str = Field(default="mlx-community/whisper-small", description="MLX model name")
-    use_modelscope: bool = Field(default=True, description="Whether to use modelscope instead of huggingface") 
+    model: str = Field(default="mlx-community/whisper-large-v3-mlx", description="MLX model name")
+    use_modelscope: bool = Field(default=True, description="Whether to use modelscope instead of huggingface")
+    dump_audio_dir: str = Field(default="", description="Directory to dump uploaded audio files")
 
 
 class ServerConfig(BaseModel):

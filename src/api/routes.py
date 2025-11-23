@@ -1,8 +1,11 @@
 """API routes for the MLX Whisper Server."""
 
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any
+
 from fastapi import APIRouter, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
-from typing import Dict, Any
 
 from ..api.models import (
     TranscribeRequest,
@@ -28,6 +31,40 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+def _dump_audio_file(
+    audio_data: bytes,
+    original_filename: str | None,
+    dump_audio_dir: str,
+    request_id: str
+) -> None:
+    """Persist uploaded audio to a configured dump directory with timestamp prefix."""
+    if not dump_audio_dir:
+        return
+
+    dump_dir_path = Path(dump_audio_dir)
+    safe_filename = Path(original_filename or "audio.mp3").name or "audio.mp3"
+    timestamp_prefix = datetime.now().strftime("%Y%m%d%H%M%S")
+    dump_path = dump_dir_path / f"{timestamp_prefix}_{safe_filename}"
+
+    try:
+        dump_dir_path.mkdir(parents=True, exist_ok=True)
+        dump_path.write_bytes(audio_data)
+        logger.info(
+            "Saved uploaded audio to dump directory",
+            dump_path=str(dump_path),
+            request_id=request_id
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to save uploaded audio",
+            dump_dir=str(dump_dir_path),
+            error=str(e),
+            request_id=request_id
+        )
+        error = TranscribeError("Failed to save uploaded audio", "server_error", 500, request_id)
+        raise HTTPException(status_code=500, detail=error.to_dict())
+
+
 @router.post(
     "/v1/audio/transcriptions",
     response_model=TranscribeResponse,
@@ -43,7 +80,7 @@ router = APIRouter()
 async def transcribe_audio(
     request: Request,
     file: UploadFile = File(..., description="Audio file to transcribe"),
-    model: str = "mlx-community/whisper-small",
+    model: str = "mlx-community/whisper-large-v3-mlx",
     language: str | None = None,
     response_format: str = "json",
     temperature: float = 0.0
@@ -56,6 +93,7 @@ async def transcribe_audio(
     request_id = logger._context.get("request_id", "unknown")
 
     try:
+        cfg = config.load()
         logger.info(
             "Received transcription request",
             filename=file.filename,
@@ -71,7 +109,10 @@ async def transcribe_audio(
 
         # Check if file is empty
         if not audio_data:
-            raise InvalidFileFormatError("empty", config.load().transcription.allowed_formats, request_id)
+            raise InvalidFileFormatError("empty", cfg.transcription.allowed_formats, request_id)
+
+        filename_for_processing = file.filename or "audio.mp3"
+        _dump_audio_file(audio_data, filename_for_processing, cfg.transcription.dump_audio_dir, request_id)
 
         # Create parameters dict
         parameters = {
@@ -82,13 +123,11 @@ async def transcribe_audio(
         }
 
         # Import transcription service
-        from ..core.config import config
         from ..services.validation import AudioValidator
         from ..mlx.model_manager import ModelManager
         from ..services.transcription import TranscriptionService
 
         # Create service instances
-        cfg = config.load()
         validator = AudioValidator(
             cfg.transcription.max_file_size,
             cfg.transcription.max_duration,
@@ -100,7 +139,7 @@ async def transcribe_audio(
         # Run transcription
         result = await transcription_service.transcribe(
             audio_data,
-            file.filename or "audio.mp3",
+            filename_for_processing,
             parameters,
             request_id
         )
