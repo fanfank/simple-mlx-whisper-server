@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class ModelManager:
     """Manager for MLX Whisper model lifecycle."""
 
-    def __init__(self, model_name: str = "mlx-community/whisper-large-v3-mlx", use_modelscope: bool = True):
+    def __init__(self, model_name: str, use_modelscope: bool):
         """Initialize model manager.
 
         Args:

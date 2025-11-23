@@ -5,6 +5,7 @@ import uuid
 from typing import Any, Dict, List
 
 import structlog
+from structlog.processors import CallsiteParameter, CallsiteParameterAdder
 from structlog.typing import EventDict
 
 
@@ -26,7 +27,7 @@ def add_timestamp(logger: Any, method_name: str, event_dict: EventDict) -> Event
     """Add ISO 8601 timestamp to log entries."""
     from datetime import datetime
 
-    event_dict["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    event_dict["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return event_dict
 
 
@@ -50,12 +51,31 @@ def setup_logging(level: str = "INFO", format_type: str = "json") -> None:
         level: Logging level (DEBUG, INFO, WARNING, ERROR)
         format_type: Log format (json or text)
     """
+    def plaintext_renderer(logger: Any, name: str, event_dict: EventDict) -> str:
+        """Render log events as human-readable plaintext."""
+        level_value = event_dict.pop("level", event_dict.pop("log_level", "")).upper()
+        timestamp = event_dict.pop("timestamp", "")
+        filename = event_dict.pop("filename", "")
+        lineno = event_dict.pop("lineno", "")
+        event = event_dict.pop("event", "")
+
+        location = f"{filename}:{lineno}" if filename else ""
+        parts = [part for part in (level_value, timestamp, location, str(event)) if part]
+        message = " ".join(parts)
+
+        if event_dict:
+            extras = " ".join(f"{key}={value}" for key, value in event_dict.items())
+            message = f"{message} {extras}"
+
+        return message
+
     # Configure processors as a list
     processors: List[Any] = [
         structlog.stdlib.filter_by_level,
         add_request_id,
         add_correlation_id,
         add_timestamp,
+        CallsiteParameterAdder(parameters=[CallsiteParameter.FILENAME, CallsiteParameter.LINENO]),
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         filter_sensitive_data,
@@ -64,12 +84,11 @@ def setup_logging(level: str = "INFO", format_type: str = "json") -> None:
     if format_type == "json":
         processors.extend([
             structlog.processors.TimeStamper(fmt="ISO"),
-            structlog.processors.add_log_level,
             structlog.processors.JSONRenderer()
         ])
     else:
         processors.extend([
-            structlog.dev.ConsoleRenderer()
+            plaintext_renderer
         ])
 
     # Configure structlog

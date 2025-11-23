@@ -243,21 +243,18 @@ class TestExceptionHierarchy:
 class TestPydanticValidationErrors:
     """Test that Pydantic validation errors are properly handled."""
 
-    def test_invalid_request_model_raises_validation_error(self):
-        """Test that invalid request data raises Pydantic validation error."""
+    def test_request_model_accepts_defaults(self):
+        """Test that request model accepts defaults when no fields are provided."""
         from src.api.models import TranscribeRequest
 
-        # Test with missing required field
-        with pytest.raises(PydanticValidationError):
-            TranscribeRequest()
+        TranscribeRequest()
 
-    def test_invalid_file_type_raises_validation_error(self):
-        """Test that invalid file type raises Pydantic validation error."""
+    def test_extra_fields_raise_validation_error(self):
+        """Test that unexpected fields raise validation errors."""
         from src.api.models import TranscribeRequest
 
-        # Test with invalid model name
         with pytest.raises(PydanticValidationError):
-            TranscribeRequest(model="")  # Empty model name should fail validation
+            TranscribeRequest(model="should-not-be-allowed")
 
 
 @pytest.mark.asyncio

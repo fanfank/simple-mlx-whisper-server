@@ -9,10 +9,10 @@ transcription:
   max_file_size: 26214400
   max_duration: 1500
   allowed_formats: ["mp3", "wav", "m4a", "mp4", "mpeg", "webm"]
-  model: "mlx-community/whisper-large-v3-mlx"
+  model: "mlx-community/whisper-large-v3-turbo" # mlx-community/whisper-large-v3-turbo , mlx-community/whisper-small-mlx , mlx-community/whisper-large-v3-turbo
   use_modelscope: true # set to false if you can stably connect to huggingface
   dump_audio_dir: "tmp_audio"
 
 logging:
   level: "INFO"
-  format: "json"
+  format: "text"

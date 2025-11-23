@@ -31,11 +31,11 @@ class TestTranscriptionConfig:
 
     def test_default_values(self):
         """Test default transcription configuration."""
-        config = TranscriptionConfig()
+        config = TranscriptionConfig(model="test-model")
         assert config.max_file_size == 25 * 1024 * 1024
         assert config.max_duration == 1500
         assert config.allowed_formats == ["mp3", "wav", "m4a", "mp4", "mpeg", "webm"]
-        assert config.model == "mlx-community/whisper-small"
+        assert config.model == "test-model"
 
     def test_custom_values(self):
         """Test custom transcription configuration."""
@@ -56,7 +56,7 @@ class TestLoggingConfig:
         """Test default logging configuration."""
         config = LoggingConfig()
         assert config.level == "INFO"
-        assert config.format == "json"
+        assert config.format == "text"
 
     def test_custom_values(self):
         """Test custom logging configuration."""
@@ -115,7 +115,7 @@ class TestConfig:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "test_config.yaml"
             with open(config_path, "w") as f:
-                yaml.dump({}, f)
+                yaml.dump({"transcription": {"model": "test-model"}}, f)
 
             config = Config(str(config_path))
             cfg = config.config  # Access property
@@ -126,7 +126,7 @@ class TestConfig:
         """Test reloading configuration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "test_config.yaml"
-            config_data = {"server": {"port": 9000}}
+            config_data = {"server": {"port": 9000}, "transcription": {"model": "test-model"}}
             with open(config_path, "w") as f:
                 yaml.dump(config_data, f)
 
@@ -135,7 +135,7 @@ class TestConfig:
             assert cfg1.server.port == 9000
 
             # Update config file
-            config_data = {"server": {"port": 9500}}
+            config_data = {"server": {"port": 9500}, "transcription": {"model": "test-model"}}
             with open(config_path, "w") as f:
                 yaml.dump(config_data, f)
 

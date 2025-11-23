@@ -1,5 +1,6 @@
 """API routes for the MLX Whisper Server."""
 
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
@@ -8,7 +9,6 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from ..api.models import (
-    TranscribeRequest,
     TranscribeResponse,
     VerboseTranscribeResponse,
     ErrorResponse,
@@ -80,7 +80,6 @@ def _dump_audio_file(
 async def transcribe_audio(
     request: Request,
     file: UploadFile = File(..., description="Audio file to transcribe"),
-    model: str = "mlx-community/whisper-large-v3-mlx",
     language: str | None = None,
     response_format: str = "json",
     temperature: float = 0.0
@@ -89,6 +88,7 @@ async def transcribe_audio(
 
     Compatible with OpenAI Whisper API.
     """
+    start_time = time.perf_counter()
     # Get request ID from logging context
     request_id = logger._context.get("request_id", "unknown")
 
@@ -98,7 +98,7 @@ async def transcribe_audio(
             "Received transcription request",
             filename=file.filename,
             content_type=file.content_type,
-            model=model,
+            model=cfg.transcription.model,
             language=language,
             response_format=response_format,
             request_id=request_id
@@ -116,7 +116,6 @@ async def transcribe_audio(
 
         # Create parameters dict
         parameters = {
-            "model": model,
             "language": language,
             "response_format": response_format,
             "temperature": temperature
@@ -189,6 +188,13 @@ async def transcribe_audio(
         )
         error = TranscribeError("Internal server error", "server_error", 500, request_id)
         raise HTTPException(status_code=500, detail=error.to_dict())
+    finally:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.info(
+            "Transcription request finished",
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
 
 
 @router.get(

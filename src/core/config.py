@@ -18,7 +18,7 @@ class TranscriptionConfig(BaseModel):
         default=["mp3", "wav", "m4a", "mp4", "mpeg", "webm"],
         description="Allowed audio formats"
     )
-    model: str = Field(default="mlx-community/whisper-large-v3-mlx", description="MLX model name")
+    model: str = Field(description="MLX model name")
     use_modelscope: bool = Field(default=True, description="Whether to use modelscope instead of huggingface")
     dump_audio_dir: str = Field(default="", description="Directory to dump uploaded audio files")
 
@@ -37,7 +37,7 @@ class LoggingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     level: str = Field(default="INFO", description="Log level")
-    format: str = Field(default="json", description="Log format")
+    format: str = Field(default="text", description="Log format")
 
 
 class AppConfig(BaseModel):
